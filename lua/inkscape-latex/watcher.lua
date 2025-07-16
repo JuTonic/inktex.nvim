@@ -8,20 +8,6 @@ local WATCHER_NAME = "inkscape-texd"
 ---@type table<integer, integer> # key = bufnr, value = job_id
 local active_jobs = {}
 
----@param bufnr integer
-function M._get_figures_dir(bufnr)
-    local bufname = vim.api.nvim_buf_get_name(bufnr)
-    local bufdir = vim.fn.fnamemodify(bufname, ":p:h")
-    local figures_dir = vim.fs.joinpath(bufdir, opts.figures_dir)
-
-    if vim.fn.isdirectory(figures_dir) ~= 1 then
-        vim.notify("Figures directory does not exist: " .. figures_dir, vim.log.levels.ERROR)
-        return nil
-    end
-
-    return figures_dir
-end
-
 local function on_watcher_stderr(_, data, _)
     if not data then return end
     for _, line in ipairs(data) do
@@ -31,30 +17,37 @@ local function on_watcher_stderr(_, data, _)
     end
 end
 
----@param bufnr integer assumes tex extension
-function M.start_for_buffer(bufnr)
-    print(opts.watcher_bin)
+---@param bufnr integer
+function M.is_already_running(bufnr)
+    if active_jobs[bufnr] then
+        return true
+    end
+    return false
+end
 
+---@param bufnr integer assumes tex extension
+---@param silent boolean?
+function M.start_for_buffer(bufnr, silent)
     local name = utils.get_buffer_name(bufnr)
 
-    if utils.get_filetype(bufnr) ~= "tex" then
-        vim.notify(name .. " is not a .tex file", vim.log.levels.WARN)
-        return nil
-    end
-
-    if active_jobs[bufnr] then
+    if M.is_already_running(bufnr) then
         vim.notify("Watcher for " .. name .. " is already running", vim.log.levels.WARN)
         return nil
     end
 
-    local watch_dir = M._get_figures_dir(bufnr)
+    if utils.get_buffer_filetype(bufnr) ~= "tex" then
+        vim.notify(name .. " is not a .tex file", vim.log.levels.WARN)
+        return nil
+    end
+
+    local watch_dir = utils.get_figures_dir(bufnr, opts)
     if not watch_dir then return end
 
-    local cmd = { opts.watcher_bin, watch_dir }
+    local cmd = { opts.watcher_path, watch_dir }
 
-    if opts.inkscape_bin then
+    if opts.inkscape_pat then
         table.insert(cmd, "--inkscape-bin")
-        table.insert(cmd, opts.inkscape_bin)
+        table.insert(cmd, opts.inkscape_pat)
     end
 
     local job_id = vim.fn.jobstart(cmd, {
@@ -81,9 +74,20 @@ function M.start_for_buffer(bufnr)
         end,
     })
 
-    vim.notify("Started " .. WATCHER_NAME .. " for " .. name, vim.log.levels.INFO)
+    silent = silent or true
+    if silent then
+        vim.notify("Started " .. WATCHER_NAME .. " for " .. name, vim.log.levels.INFO)
+    end
 end
 
+---@param bufnr integer assumes tex extension
+function M.ensure_running(bufnr)
+    if not M.is_already_running(bufnr) then
+        M.start_for_buffer(bufnr)
+    end
+end
+
+---@param bufnr integer assumes tex extension
 function M.stop_for_buffer(bufnr)
     local name = utils.get_buffer_name(bufnr)
     local job_id = active_jobs[bufnr]

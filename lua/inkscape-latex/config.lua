@@ -1,80 +1,136 @@
 local utils = require("inkscape-latex.utils")
-
 local M = {}
 
---- @class InkScapeLatexOptions
---- @field auto_start? boolean
+--- @class InkscapeLatexOptionsInput
+--- @field start_at_buffer_attach? boolean
+--- @field start_at_svg_open? boolean
 --- @field figures_dir? string
---- @field inkscape_bin? string
---- @field watcher_bin? string
---- @field template? string
+--- @field create_figures_dir? boolean
+--- @field inkscape_path? string
+--- @field watcher_path? string
+--- @field template_path? string
+---
+--- @class InkscapeLatexOptions : InkscapeLatexOptionsInput
+--- @field start_at_buffer_attach boolean
+--- @field start_at_svg_open boolean
+--- @field figures_dir string
+--- @field create_figures_dir boolean
+--- @field inkscape_path string
+--- @field watcher_path string
+--- @field template_path string
 
 local PLUGIN_ROOT = utils.get_plugin_root()
-local DATA_DIR = vim.fn.stdpath("data")
-
+local DATA_DIR = utils.get_plugin_data_dir()
 local WATCHER_NAME = "inkscape-texd"
 local WATCHER_PATH = vim.fs.joinpath(PLUGIN_ROOT, "bin", WATCHER_NAME)
-local function get_watcher_bin()
-    if vim.fn.filereadable(WATCHER_PATH) == 0 then
+local TEMPLATE_DIR = DATA_DIR
+local TEMPLATE_PATH = vim.fs.joinpath(TEMPLATE_DIR, "template.svg")
+local INKSCAPE_BIN = "inkscape"
+
+---@param path string
+local function verify_watcher_path(path)
+    if vim.fn.filereadable(path) == 0 then
         vim.notify("Failed to find '" .. WATCHER_NAME .. "' binary: " .. WATCHER_PATH, vim.log.levels.ERROR)
         return
     end
-    if vim.fn.executable(WATCHER_PATH) == 0 then
+    if vim.fn.executable(path) == 0 then
         vim.notify(WATCHER_PATH .. " is not executable", vim.log.levels.ERROR)
-        return
-    end
-
-    return WATCHER_PATH
-end
-
-local function get_inkscape_bin()
-    local path = vim.fn.exepath("inkscape")
-
-    if path == "" then
-        vim.notify("Inkscape not found in $PATH.", vim.log.levels.ERROR)
         return
     end
 
     return path
 end
 
--- local TEMPLATE_PATH = vim.fs.joinpath(vim)
--- local function get_template()
---     if vim.fn.filereadable() == 0 then
---         vim.notify("Failed to find '" .. WATCHER_NAME .. "' binary: " .. watcher_bin_full_path, vim.log.levels.ERROR)
---         return
---     end
--- end
---
-local ink
+---@param path string
+local function verify_inkscape_path(path)
+    path = vim.fn.exepath(path)
 
---- @type InkScapeLatexOptions
+    if path == "" then
+        vim.notify("Inkscape not found in $PATH or not executable.", vim.log.levels.ERROR)
+        return
+    end
+
+    return path
+end
+
+---@param inkscape string
+local function ensure_template_existence(inkscape)
+    if vim.fn.filereadable(TEMPLATE_PATH) == 0 then
+        local code = vim.fn.mkdir(TEMPLATE_DIR, "p")
+        if code == 0 then
+            vim.notify("Failed to create template directory: " .. TEMPLATE_DIR, vim.log.levels.ERROR)
+            return
+        end
+
+        local output = vim.system({ inkscape, "--export-filename", TEMPLATE_PATH }):wait()
+        if output.code ~= 0 then
+            vim.notify("Failed to create template file: " .. TEMPLATE_PATH, vim.log.levels.ERROR)
+            return
+        end
+    end
+    return TEMPLATE_PATH
+end
+
+---@param path string?
+---@param inkscape string
+local function verify_template(path, inkscape)
+    if not path then
+        return ensure_template_existence(inkscape)
+    end
+
+    if vim.fn.filereadable(path) == 0 then
+        vim.notify(
+            "Provided template (" ..
+            path .. ") does not exist or is not readable. \nFalling back to default template",
+            vim.log.levels
+            .ERROR)
+        return ensure_template_existence(inkscape)
+    end
+
+    if utils.get_filetype_from_path(path) ~= "svg" then
+        vim.notify("Using non svg file (" .. path .. ") as a template?", vim.log.levels.WARN)
+    end
+
+    return path
+end
+
+--- @type InkscapeLatexOptions
 M.opts = {
-    auto_start = true,
+    start_at_buffer_attach = true,
+    start_at_svg_open = true,
     figures_dir = "figures",
-    inkscape_bin = nil,
-    watcher_bin = nil,
-    template = nil,
+    create_figures_dir = true,
+    inkscape_path = "",
+    watcher_path = "",
+    template_path = "",
 }
 
---- @param opts? InkScapeLatexOptions
+--- @param opts? InkscapeLatexOptionsInput
 --- @return boolean
 function M.setup(opts)
-    if not opts or not opts.watcher_bin then
-        M.opts.watcher_bin = get_watcher_bin()
-        if not M.opts.watcher_bin then return false end
-    end
+    opts = opts or {}
 
-    if not opts or not opts.inkscape_bin then
-        M.opts.inkscape_bin = get_inkscape_bin()
-        if not M.opts.inkscape_bin then return false end
-    end
+    print(opts.start_at_buffer_attach)
+
+    local watcher_path = verify_watcher_path(opts.watcher_path or WATCHER_PATH)
+    if not watcher_path then return false end
+    M.opts.watcher_path = watcher_path
+
+    local inkscape_path = verify_inkscape_path(opts.inkscape_path or INKSCAPE_BIN)
+    if not inkscape_path then return false end
+    M.opts.inkscape_path = inkscape_path
+
+    local template_path = verify_template(opts.template_path, inkscape_path)
+    if not template_path then return false end
+    M.opts.template_path = template_path
 
     M.opts = vim.tbl_deep_extend(
         "force",
         M.opts,
-        opts or {}
+        opts
     )
+
+    utils.opts = M.opts
 
     return true
 end
