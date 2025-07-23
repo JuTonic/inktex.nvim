@@ -200,11 +200,42 @@ M.brackets = {
 ---@param line string
 ---@param col integer
 ---@param bracket_pair BracketPair
-function M.match_text_in_brackets(line, col, bracket_pair)
+---@param target_depth? integer
+function M.match_text_in_brackets(line, col, bracket_pair, target_depth)
+    target_depth = target_depth or 1
     local opening, closing = bracket_pair.opening, bracket_pair.closing
-    local depth = 1
+    local depth = -target_depth
 
-    local end_pos
+    local cursor_char = line:sub(col, col)
+    if cursor_char == closing then
+        depth = depth + 1
+    end
+
+    local start_col
+    for i = col, 1, -1 do
+        local char = line:sub(i, i)
+        if char == opening then
+            depth = depth + 1
+        elseif char == closing then
+            depth = depth - 1
+        end
+        print(char, depth)
+        if depth == 0 then
+            start_col = i
+            break
+        end
+    end
+    if not start_col then
+        print("here")
+        return
+    end
+
+    depth = target_depth
+    if cursor_char == opening then
+        depth = depth - 1
+    end
+
+    local end_col
     for i = col, #line do
         local char = line:sub(i, i)
         if char == opening then
@@ -213,33 +244,15 @@ function M.match_text_in_brackets(line, col, bracket_pair)
             depth = depth - 1
         end
         if depth == 0 then
-            end_pos = i - 1
+            end_col = i
             break
         end
     end
-    if not end_pos then
+    if not end_col then
         return
     end
 
-    depth = -1
-    local start_pos
-    for i = col, 1, -1 do
-        local char = line:sub(i, i)
-        if char == opening then
-            depth = depth + 1
-        elseif char == closing then
-            depth = depth - 1
-        end
-        if depth == 0 then
-            start_pos = i + 1
-            break
-        end
-    end
-    if not start_pos then
-        return
-    end
-
-    return line:sub(start_pos, end_pos)
+    return line:sub(start_col + 1, end_col - 1)
 end
 
 function M.match_text_in_brackets_under_cursor(bracket_pair)
