@@ -1,3 +1,4 @@
+local Path = require("neotil.path")
 local cfg = require("inkfig.config")
 local utils = require("inkfig.utils")
 local watcher = require("inkfig.watcher")
@@ -91,7 +92,7 @@ function M.create_and_open_in_inkscape(filename, bufnr)
     local full_path = utils.add_figures_dir(filename)
 
     if cfg.opts.auto_create_dir then
-        local dir = utils.Path:new(full_path):dir()
+        local dir = Path:new(full_path):dir()
         if dir then
             vim.fn.mkdir(dir, "p")
         end

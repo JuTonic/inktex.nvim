@@ -3,7 +3,11 @@ local utils = require("inkfig.utils")
 
 local M = {}
 
-local WATCHER_NAME = "inkfigd"
+local WATCHER_NAME = "inkwatch"
+local INKSCAPE_PATH_ARG = "--inkscape-path"
+local AUX_PREFIX_ARG = "--aux-prefix"
+local NOT_RECURSIVELY = "--not-recursively"
+local DO_NOT_REGENERATE = "--do-not-regenerate"
 
 ---@type table<integer, integer> # key = bufnr, value = job_id
 local active_jobs = {}
@@ -28,11 +32,6 @@ end
 function M.is_active_for_buf(bufnr)
     return active_jobs[bufnr] ~= nil
 end
-
-local INKSCAPE_PATH_ARG = "--inkscape-path"
-local AUX_PREFIX_ARG = "--aux-prefix"
-local NOT_RECURSIVELY = "--not-recursively"
-local DO_NOT_REGENERATE = "--do-not-regenerate"
 
 ---@param bufnr integer buffer id
 ---@param silent boolean?

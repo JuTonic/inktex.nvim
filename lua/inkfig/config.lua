@@ -8,6 +8,7 @@ local M = {}
 local PLUGIN_ROOT = utils.get_plugin_root_path()
 local DATA_DIR = utils.get_plugin_data_dir()
 local WATCHER_NAME = "inkfigd"
+local INKSCAPE_EXPORT_FILENAME_ARG = "--export-filename"
 
 ---@type InkscapeLatexOptions
 local DEFAULTS_OPTS = {
@@ -35,13 +36,13 @@ local function resolve_valid_watcher_path(path)
     local abs_path = vim.fs.abspath(path)
     if vim.fn.filereadable(abs_path) == 0 then
         vim.notify(
-            "Failed to find " .. DEFAULTS_OPTS.watcher_path,
+            "Failed to find watcher binary: " .. DEFAULTS_OPTS.watcher_path,
             vim.log.levels.ERROR
         )
         return
     elseif vim.fn.executable(abs_path) == 0 then
         vim.notify(
-            "Watcher binary is not executable " .. DEFAULTS_OPTS.watcher_path,
+            "Watcher binary is not executable: " .. DEFAULTS_OPTS.watcher_path,
             vim.log.levels.ERROR
         )
         return
@@ -57,7 +58,7 @@ local function verify_valid_inkscape_path(path)
 
     if resolved == "" then
         vim.notify(
-            "Inkscape not found in $PATH or not executable.",
+            "Inkscape is not found in $PATH or is not executable.",
             vim.log.levels.ERROR
         )
         return
@@ -81,9 +82,11 @@ local function create_default_template_if_needed(inkscape)
         return
     end
 
-    local output =
-        vim.system({ inkscape, "--export-filename", DEFAULTS_OPTS.template })
-            :wait()
+    local output = vim.system({
+        inkscape,
+        INKSCAPE_EXPORT_FILENAME_ARG,
+        DEFAULTS_OPTS.template,
+    }):wait()
 
     if output.code ~= 0 then
         vim.notify(
@@ -107,7 +110,7 @@ local function verify_template(path, inkscape)
     local abs_path = vim.fs.abspath(path)
     if vim.fn.filereadable(abs_path) == 0 then
         vim.notify(
-            "Provided template not readable: "
+            "Provided template is not readable: "
                 .. abs_path
                 .. "\nUsing default template.",
             vim.log.levels.ERROR
@@ -132,7 +135,6 @@ end
 ---@type InkscapeLatexOptions
 ---@diagnostic disable-next-line: missing-fields
 M.opts = {}
-
 ---Configure the plugin with given options.
 --- @param opts? InkscapeLatexOptionsInput
 --- @return boolean
