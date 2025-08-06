@@ -1,24 +1,33 @@
-local utils = require("inkfig.utils")
+local misc = require("neotil.misc")
+local utils = require("inktex.utils")
 local M = {}
+
+M.var = {}
+M.var.WATCHER_NAME = "inktex-watch"
+M.var.PLUGIN_NAME = "inktex"
+M.var.PLUGIN_ROOT =
+    misc.get_plugin_root_path(debug.getinfo(1, "S"), M.var.PLUGIN_NAME)
+M.var.DATA_DIR = misc.get_data_dir()
 
 -- ╭─────────────────────────────────────────────────────────╮
 -- │                        CONSTANTS                        │
 -- ╰─────────────────────────────────────────────────────────╯
 
-local PLUGIN_ROOT = utils.get_plugin_root_path()
-local DATA_DIR = utils.get_plugin_data_dir()
-local WATCHER_NAME = "inkfigd"
 local INKSCAPE_EXPORT_FILENAME_ARG = "--export-filename"
 
----@type InkscapeLatexOptions
+---@type InktexOptions
 local DEFAULTS_OPTS = {
     start_at_buffer_attach = true,
     start_at_svg_open = true,
     create_figures_dir = true,
     figures_dir = "figures",
     inkscape_path = "inkscape",
-    watcher_path = vim.fs.joinpath(PLUGIN_ROOT, "bin", WATCHER_NAME),
-    template = vim.fs.joinpath(DATA_DIR, "template.svg"),
+    watcher_path = vim.fs.joinpath(
+        M.var.PLUGIN_ROOT,
+        "bin",
+        M.var.WATCHER_NAME
+    ),
+    template = vim.fs.joinpath(M.var.DATA_DIR, "template.svg"),
     aux_prefix = ".",
     recursively = true,
     regenerate = true,
@@ -76,7 +85,7 @@ local function create_default_template_if_needed(inkscape)
 
     if vim.fn.mkdir(vim.fs.dirname(DEFAULTS_OPTS.template), "p") == 0 then
         vim.notify(
-            "Failed to create template directory: " .. DATA_DIR,
+            "Failed to create template directory: " .. M.var.DATA_DIR,
             vim.log.levels.ERROR
         )
         return
@@ -132,11 +141,12 @@ end
 -- │                          SETUP                          │
 -- ╰─────────────────────────────────────────────────────────╯
 
----@type InkscapeLatexOptions
+---@type InktexOptions
 ---@diagnostic disable-next-line: missing-fields
 M.opts = {}
----Configure the plugin with given options.
---- @param opts? InkscapeLatexOptionsInput
+
+--- Configure the plugin with given options.
+--- @param opts? InktexOptionsInput
 --- @return boolean
 function M.setup(opts)
     opts = opts or {}

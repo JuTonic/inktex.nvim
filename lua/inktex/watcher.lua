@@ -1,13 +1,14 @@
-local cfg = require("inkfig.config")
-local utils = require("inkfig.utils")
+local cfg = require("inktex.config")
+local utils = require("inktex.utils")
 
 local M = {}
 
-local WATCHER_NAME = "inkwatch"
-local INKSCAPE_PATH_ARG = "--inkscape-path"
-local AUX_PREFIX_ARG = "--aux-prefix"
-local NOT_RECURSIVELY = "--not-recursively"
-local DO_NOT_REGENERATE = "--do-not-regenerate"
+local watcher_args = {
+    INKSCAPE_PATH = "--inkscape-path",
+    AUX_PREFIX = "--aux-prefix",
+    NOT_RECURSIVELY = "--not-recursively",
+    DO_NOT_REGENERATE = "--do-not-regenerate",
+}
 
 ---@type table<integer, integer> # key = bufnr, value = job_id
 local active_jobs = {}
@@ -51,52 +52,56 @@ function M.start_for_buf(bufnr, silent)
         return nil
     end
 
-    local opts = cfg.opts
-
     local watch_dir = utils.resolve_figures_dir_for_buffer(bufnr)
     if not watch_dir then
         return
     end
 
-    local cmd = { opts.watcher_path, watch_dir }
+    local cmd = { cfg.opts.watcher_path, watch_dir }
 
-    if opts.inkscape_path then
-        vim.list_extend(cmd, { INKSCAPE_PATH_ARG, opts.inkscape_path })
+    if cfg.opts.inkscape_path then
+        vim.list_extend(
+            cmd,
+            { watcher_args.INKSCAPE_PATH, cfg.opts.inkscape_path }
+        )
     end
 
-    if opts.aux_prefix ~= "" then
-        vim.list_extend(cmd, { AUX_PREFIX_ARG, opts.aux_prefix })
+    if cfg.opts.aux_prefix ~= "" then
+        vim.list_extend(cmd, { watcher_args.AUX_PREFIX, cfg.opts.aux_prefix })
     end
 
-    if not opts.recursively then
-        vim.list_extend(cmd, { NOT_RECURSIVELY })
+    if not cfg.opts.recursively then
+        vim.list_extend(cmd, { watcher_args.NOT_RECURSIVELY })
     end
 
-    if not opts.regenerate then
-        vim.list_extend(cmd, { DO_NOT_REGENERATE })
+    if not cfg.opts.regenerate then
+        vim.list_extend(cmd, { watcher_args.DO_NOT_REGENERATE })
     end
 
     local job_id = vim.fn.jobstart(cmd, {
         stdout_buffered = false,
         stderr_buffered = true,
         on_stderr = on_watcher_stderr,
-        on_exit = function(_, code, _)
-            vim.notify(
-                WATCHER_NAME
-                    .. " exited for "
-                    .. file_path
-                    .. " (exit code "
-                    .. code
-                    .. ")",
-                vim.log.levels.INFO
-            )
-            active_jobs[bufnr] = nil
-        end,
+        -- on_exit = function(_, code, _)
+        --     vim.notify(
+        --         cfg.var.WATCHER_NAME
+        --             .. " exited for "
+        --             .. file_path
+        --             .. " (exit code "
+        --             .. code
+        --             .. ")",
+        --         vim.log.levels.INFO
+        --     )
+        --     active_jobs[bufnr] = nil
+        -- end,
     })
 
     if job_id <= 0 then
         vim.notify(
-            "Failed to start " .. WATCHER_NAME .. " for buffer " .. bufnr,
+            "Failed to start "
+                .. cfg.var.WATCHER_NAME
+                .. " for buffer "
+                .. bufnr,
             vim.log.levels.ERROR
         )
         return
@@ -112,14 +117,14 @@ function M.start_for_buf(bufnr, silent)
 
     if silent == false then
         vim.notify(
-            "Started " .. WATCHER_NAME .. " for " .. file_path,
+            "Started " .. cfg.var.WATCHER_NAME .. " for " .. file_path,
             vim.log.levels.INFO
         )
     end
 end
 
 ---@param bufnr integer buffer id
----@param silent boolean
+---@param silent? boolean
 function M.ensure_running_for_buf(bufnr, silent)
     if not M.is_active_for_buf(bufnr) then
         M.start_for_buf(bufnr, silent)
@@ -133,7 +138,7 @@ function M.stop_for_buf(bufnr)
 
     if not job_id then
         vim.notify(
-            "No " .. WATCHER_NAME .. " is running for " .. file_path,
+            "No " .. cfg.var.WATCHER_NAME .. " is running for " .. file_path,
             vim.log.levels.INFO
         )
         return nil
@@ -143,16 +148,19 @@ function M.stop_for_buf(bufnr)
     active_jobs[bufnr] = nil
 
     vim.notify(
-        "Stopped " .. WATCHER_NAME .. " for buffer " .. file_path,
+        "Stopped " .. cfg.var.WATCHER_NAME .. " for buffer " .. file_path,
         vim.log.levels.INFO
     )
 end
 
 function M.setup()
-    vim.api.nvim_create_user_command("InkscapeTexdStart", function()
+    local plugin_name = cfg.var.PLUGIN_NAME
+    local first_char = plugin_name:sub(1, 1)
+    plugin_name = first_char:upper() .. first_char:sub(2)
+    vim.api.nvim_create_user_command(plugin_name .. "WatcherStart", function()
         M.start_for_buf(vim.api.nvim_get_current_buf(), false)
     end, {})
-    vim.api.nvim_create_user_command("InkscapeTexdStop", function()
+    vim.api.nvim_create_user_command(plugin_name .. "WatcherStop", function()
         M.stop_for_buf(vim.api.nvim_get_current_buf())
     end, {})
 end

@@ -1,16 +1,25 @@
----@class FigureContext
+-- ╭─────────────────────────────────────────────────────────╮
+-- │ FIGURE CONTEXT                                          │
+-- ╰─────────────────────────────────────────────────────────╯
+
+---@class FigureData
+---@field start_row integer
+---@field end_row integer
+---@field path string
+
+---@class FigureHandler
 ---@field start_row integer
 ---@field end_row integer
 ---@field path Path
----@field new fun(self: FigureContext): FigureContext?
----@field rename fun(self: FigureContext): boolean
----@field remove fun(self: FigureContext): boolean
+---@field new fun(self: FigureHandler): FigureHandler | nil
+---@field rename fun(self: FigureHandler, new_path: Path): boolean
+---@field remove fun(self: FigureHandler): boolean
 
 -- ╭─────────────────────────────────────────────────────────╮
 -- │ CONFIG                                                  │
 -- ╰─────────────────────────────────────────────────────────╯
 
---- @class InkscapeLatexOptionsInput
+--- @class InktexOptionsInput
 --- @field start_at_buffer_attach? boolean
 --- @field start_at_svg_open? boolean
 --- @field figures_dir? string
@@ -24,7 +33,7 @@
 --- @field silent_watcher_start? boolean
 --- @field auto_create_dir? boolean
 
---- @class InkscapeLatexOptions : InkscapeLatexOptionsInput
+--- @class InktexOptions : InktexOptionsInput
 --- @field start_at_buffer_attach boolean
 --- @field start_at_svg_open boolean
 --- @field figures_dir string
@@ -37,7 +46,3 @@
 --- @field regenerate boolean
 --- @field silent_watcher_start boolean
 --- @field auto_create_dir boolean
-
--- ╭─────────────────────────────────────────────────────────╮
--- │ UTILS                                                   │
--- ╰─────────────────────────────────────────────────────────╯

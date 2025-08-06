@@ -1,7 +1,7 @@
 local Path = require("neotil.path")
-local cfg = require("inkfig.config")
-local utils = require("inkfig.utils")
-local watcher = require("inkfig.watcher")
+local cfg = require("inktex.config")
+local utils = require("inktex.utils")
+local watcher = require("inktex.watcher")
 
 local M = {}
 
@@ -24,10 +24,10 @@ function M.open_in_inkscape(path, bufnr)
         { text = true },
         function(output)
             if output.code ~= 0 then
-                local bin_name = vim.fs.basename(opts.inkscape_path)
+                local bin_name = vim.fs.basename(cfg.opts.inkscape_path)
                 vim.schedule(function()
                     vim.notify(
-                        "Failed to run " .. bin_name .. ": " .. output.stderr,
+                        "Failed to run '" .. bin_name .. "': " .. output.stderr,
                         vim.log.levels.ERROR
                     )
                 end)
@@ -39,16 +39,15 @@ end
 ---Create an SVG file from the configured template.
 ---@param path string where to copy
 local function copy_svg_from_template(path)
-    local opts = cfg.opts
     if vim.fn.filereadable(path) == 1 then
         vim.notify("File already exists: " .. path, vim.log.levels.INFO)
         return false
     end
 
-    local template = io.open(opts.template, "r")
+    local template = io.open(cfg.opts.template, "r")
     if not template then
         vim.notify(
-            "Failed to read template file: " .. opts.template,
+            "Failed to read template file: " .. cfg.opts.template,
             vim.log.levels.ERROR
         )
         return false
@@ -118,27 +117,6 @@ function M.setup()
 
         M.create_and_open_in_inkscape(filename)
     end, { nargs = "?" })
-
-    vim.api.nvim_create_user_command("OpenFigure", function(args)
-        local mode = vim.fn.mode()
-
-        local match
-
-        if mode == "v" or mode == "V" then
-            print("test")
-            match = utils.get_visually_selected_text()
-        else
-            match = utils.match_text_in_brackets_under_cursor(
-                utils.brackets.CURLY
-            ) or utils.get_word_under_cursor()
-        end
-
-        print(match)
-    end, { range = true })
-
-    -- Use a Lua wrapper to preserve visual mode
-    vim.keymap.set({ "n" }, "gO", "<Cmd>OpenFigure<CR>")
-    vim.keymap.set({ "v" }, "gO", ":OpenFigure<CR>")
 end
 
 return M

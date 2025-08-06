@@ -1,8 +1,5 @@
 local M = {}
 
-M.var = {}
-M.var.PLUGIN_NAME = "inkfig"
-
 -- ╭─────────────────────────────────────────────────────────╮
 -- │ FILETYPE UTILITIES                                      │
 -- ╰─────────────────────────────────────────────────────────╯
@@ -20,35 +17,6 @@ function M.resolve_filetype_from_path(path)
 end
 
 -- ╭─────────────────────────────────────────────────────────╮
--- │ PLUGIN PATH UTILITIES                                   │
--- ╰─────────────────────────────────────────────────────────╯
-
--- https://neovim.discourse.group/t/get-path-to-plugin-directory/2658
-
----Get the root path of the plugin.
----@return string
-function M.get_plugin_root_path()
-    local info = debug.getinfo(1, "S")
-    local script_path = info.source:sub(2)
-    return vim.fn.fnamemodify(script_path, ":h:h:h")
-end
-
---- Get the plugin's data directory.
-local data_dir_cache = nil
----@return string
-function M.get_plugin_data_dir()
-    if data_dir_cache then
-        return data_dir_cache
-    end
-
-    local base_dir = vim.fn.stdpath("data")
-    vim.fn.mkdir(base_dir, "p")
-    data_dir_cache = vim.fs.joinpath(base_dir, PLUGIN_NAME)
-
-    return data_dir_cache
-end
-
--- ╭─────────────────────────────────────────────────────────╮
 -- │ BUFFERS UTILITIES                                       │
 -- ╰─────────────────────────────────────────────────────────╯
 
@@ -61,11 +29,11 @@ end
 ---Get or create figures directory for a given buffer.
 ---@param bufnr integer? buffer id
 function M.resolve_figures_dir_for_buffer(bufnr)
+    local cfg = require("inktex.config")
+
     if not bufnr then
         bufnr = vim.api.nvim_get_current_buf()
     end
-
-    local cfg = require("inkfig.config")
 
     local bufname = vim.api.nvim_buf_get_name(bufnr)
     if bufname == "" then
@@ -103,17 +71,6 @@ function M.add_figures_dir(path, bufnr)
         return path
     end
     return vim.fs.joinpath(figures_dir, path)
-end
-
-function M.match_text_in_brackets_under_cursor(bracket_pair)
-    local line = vim.api.nvim_get_current_line()
-    local col = vim.api.nvim_win_get_cursor(0)[2] + 1
-
-    return M.match_text_in_brackets(line, col, bracket_pair)
-end
-
-function M.get_word_under_cursor()
-    return vim.fn.expand("<cword>")
 end
 
 return M
